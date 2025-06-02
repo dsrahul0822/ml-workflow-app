@@ -3,8 +3,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import joblib
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
 # ---------------------- PAGE CONFIG ----------------------
@@ -30,7 +30,8 @@ def login():
 
 # ---------------------- SIDEBAR NAVIGATION ----------------------
 st.sidebar.title("📊 Machine Learning App")
-menu = st.sidebar.radio("Go to", ["Home", "Login", "Upload Data", "Preprocessing", "Visualization", "Linear Regression", "Logistic Regression", "Prediction"])
+menu = st.sidebar.radio("Go to", ["Home", "Login", "Upload Data", "Preprocessing", "Visualization", 
+                                   "Linear Regression", "Prediction"])
 
 # ---------------------- HOME PAGE ----------------------
 if menu == "Home":
@@ -42,9 +43,11 @@ if menu == "Home":
     - 📁 Upload CSV
     - 🧹 Data Preprocessing (Missing Values, Outliers, Encoding)
     - 📊 Data Visualization (Scatter, Bar, Count)
-    - 📈 Linear Regression
-    - 📈 Logistic Regression
-    - 🔮 Prediction Interface (Dynamic Model Loading)
+    - 📈 Linear Regression (Now Available)
+    - 🔮 Prediction Interface (Fully Dynamic)
+
+    ---
+    Developed by **Rahul Tiwari**
     """)
 
 # ---------------------- LOGIN PAGE ----------------------
@@ -154,7 +157,67 @@ if menu == "Preprocessing":
             csv = st.session_state["preprocessed_data"].to_csv(index=False).encode("utf-8")
             st.download_button("Download CSV", csv, file_name="cleaned_data.csv", mime="text/csv")
 
-# ---------------------- MODEL TRAINING ----------------------
+# ---------------------- VISUALIZATION ----------------------
+if menu == "Visualization":
+    if not st.session_state["logged_in"]:
+        st.warning("🔒 Please login first.")
+    else:
+        st.title("📊 Data Visualization")
+        if "preprocessed_data" not in st.session_state:
+            st.warning("⚠️ Please preprocess the data first.")
+        else:
+            df = st.session_state["preprocessed_data"].copy()
+            chart_type = st.selectbox("Select Chart Type", ["Scatter Plot", "Bar Plot", "Count Plot"])
+            numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+            cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+
+            if chart_type == "Scatter Plot":
+                st.subheader("📍 Scatter Plot")
+                if len(numeric_cols) < 2:
+                    st.info("At least 2 numeric columns required.")
+                else:
+                    x_col = st.selectbox("X-axis", numeric_cols, key="scatter_x")
+                    y_col = st.selectbox("Y-axis", numeric_cols, key="scatter_y")
+                    color_col = st.selectbox("Color (Optional)", ["None"] + df.columns.tolist(), key="scatter_color")
+                    fig, ax = plt.subplots()
+                    if color_col != "None":
+                        sns.scatterplot(data=df, x=x_col, y=y_col, hue=color_col, ax=ax)
+                    else:
+                        sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax)
+                    st.pyplot(fig)
+
+            elif chart_type == "Bar Plot":
+                st.subheader("📊 Bar Plot")
+                if not cat_cols or not numeric_cols:
+                    st.info("Need at least one categorical and one numeric column.")
+                else:
+                    x_col = st.selectbox("Categorical column", cat_cols, key="bar_x")
+                    y_col = st.selectbox("Numeric column", numeric_cols, key="bar_y")
+                    agg_func = st.radio("Aggregate", ["Mean", "Sum"])
+                    grouped = df.groupby(x_col)[y_col]
+                    if agg_func == "Mean":
+                        data_to_plot = grouped.mean().reset_index()
+                    else:
+                        data_to_plot = grouped.sum().reset_index()
+                    fig, ax = plt.subplots()
+                    sns.barplot(data=data_to_plot, x=x_col, y=y_col, ax=ax)
+                    st.pyplot(fig)
+
+            elif chart_type == "Count Plot":
+                st.subheader("📦 Count Plot (with Hue)")
+                if not cat_cols:
+                    st.info("No categorical columns available.")
+                else:
+                    x_col = st.selectbox("X-axis (category)", cat_cols, key="count_x")
+                    hue_col = st.selectbox("Hue (optional)", ["None"] + cat_cols, key="count_hue")
+                    fig, ax = plt.subplots()
+                    if hue_col != "None":
+                        sns.countplot(data=df, x=x_col, hue=hue_col, ax=ax)
+                    else:
+                        sns.countplot(data=df, x=x_col, ax=ax)
+                    st.pyplot(fig)
+
+# ---------------------- LINEAR REGRESSION ----------------------
 if menu == "Linear Regression":
     if not st.session_state["logged_in"]:
         st.warning("🔒 Please login first.")
@@ -171,56 +234,27 @@ if menu == "Linear Regression":
             if st.button("Train Model"):
                 X = df[feature_cols]
                 y = df[target_col]
+
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                 model = LinearRegression()
                 model.fit(X_train, y_train)
+
                 y_pred = model.predict(X_test)
+
                 st.subheader("Model Performance:")
                 st.write(f"R² Score: {r2_score(y_test, y_pred):.4f}")
                 st.write(f"MSE: {mean_squared_error(y_test, y_pred):.4f}")
                 st.write(f"MAE: {mean_absolute_error(y_test, y_pred):.4f}")
+
                 joblib.dump(model, "linear_model.pkl")
                 joblib.dump(feature_cols, "features.pkl")
+
                 with open("linear_model.pkl", "rb") as f:
                     st.download_button("Download Trained Model", f, file_name="linear_model.pkl")
                 with open("features.pkl", "rb") as f:
                     st.download_button("Download Features File", f, file_name="features.pkl")
 
-if menu == "Logistic Regression":
-    if not st.session_state["logged_in"]:
-        st.warning("🔒 Please login first.")
-    else:
-        st.title("📈 Logistic Regression")
-        if "preprocessed_data" not in st.session_state:
-            st.warning("⚠️ Please preprocess and upload data first.")
-        else:
-            df = st.session_state["preprocessed_data"].copy()
-            numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
-            target_col = st.selectbox("Select Target Variable (Y - binary)", numeric_cols)
-            feature_cols = st.multiselect("Select Feature Columns (X)", [col for col in numeric_cols if col != target_col])
-
-            if st.button("Train Logistic Model"):
-                X = df[feature_cols]
-                y = df[target_col]
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-                model = LogisticRegression()
-                model.fit(X_train, y_train)
-                y_pred = model.predict(X_test)
-                st.subheader("Model Performance:")
-                st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
-                st.write(f"Precision: {precision_score(y_test, y_pred, zero_division=0):.4f}")
-                st.write(f"Recall: {recall_score(y_test, y_pred, zero_division=0):.4f}")
-                st.write(f"F1 Score: {f1_score(y_test, y_pred, zero_division=0):.4f}")
-                st.write("Confusion Matrix:")
-                st.write(confusion_matrix(y_test, y_pred))
-                joblib.dump(model, "logistic_model.pkl")
-                joblib.dump(feature_cols, "features.pkl")
-                with open("logistic_model.pkl", "rb") as f:
-                    st.download_button("Download Trained Model", f, file_name="logistic_model.pkl")
-                with open("features.pkl", "rb") as f:
-                    st.download_button("Download Features File", f, file_name="features.pkl")
-
-# ---------------------- PREDICTION ----------------------
+# ---------------------- PREDICTION PAGE ----------------------
 if menu == "Prediction":
     if not st.session_state["logged_in"]:
         st.warning("🔒 Please login first.")
@@ -228,22 +262,19 @@ if menu == "Prediction":
         st.title("🔮 Prediction Interface")
         model_file = st.file_uploader("Upload Trained Model (.pkl)", type=["pkl"], key="model")
         features_file = st.file_uploader("Upload Features File (.pkl)", type=["pkl"], key="features")
+
         if model_file is not None and features_file is not None:
             model = joblib.load(model_file)
             features = joblib.load(features_file)
+            
             st.success("Model and feature files loaded successfully!")
             st.subheader("Enter Input for Prediction:")
+
             input_data = {}
             for feature in features:
                 input_data[feature] = st.number_input(f"Enter value for {feature}")
+            
             if st.button("Predict"):
                 input_df = pd.DataFrame([input_data])
                 prediction = model.predict(input_df)[0]
-                if isinstance(model, LogisticRegression):
-                    prob_success = model.predict_proba(input_df)[0][1]
-                    if prediction == 1:
-                        st.success(f"Predicted Output: Yes (Probability of Success: {prob_success*100:.2f}%)")
-                    else:
-                        st.success(f"Predicted Output: No (Probability of Failure: {(1-prob_success)*100:.2f}%)")
-                else:
-                    st.success(f"Predicted Output: {prediction}")
+                st.success(f"Predicted Output: {prediction}")
