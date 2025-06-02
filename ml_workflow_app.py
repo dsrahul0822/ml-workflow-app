@@ -253,6 +253,45 @@ if menu == "Linear Regression":
                     st.download_button("Download Trained Model", f, file_name="linear_model.pkl")
                 with open("features.pkl", "rb") as f:
                     st.download_button("Download Features File", f, file_name="features.pkl")
+                    
+
+# ---------------------- LOGISTIC REGRESSION ----------------------
+if menu == "Logistic Regression":
+    if not st.session_state["logged_in"]:
+        st.warning("🔒 Please login first.")
+    else:
+        st.title("📈 Logistic Regression")
+        if "preprocessed_data" not in st.session_state:
+            st.warning("⚠️ Please preprocess and upload data first.")
+        else:
+            df = st.session_state["preprocessed_data"].copy()
+            numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+            target_col = st.selectbox("Select Target Variable (Y - binary)", numeric_cols)
+            feature_cols = st.multiselect("Select Feature Columns (X)", [col for col in numeric_cols if col != target_col])
+
+            if st.button("Train Logistic Model"):
+                X = df[feature_cols]
+                y = df[target_col]
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                model = LogisticRegression()
+                model.fit(X_train, y_train)
+                y_pred = model.predict(X_test)
+
+                st.subheader("Model Performance:")
+                st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+                st.write(f"Precision: {precision_score(y_test, y_pred, zero_division=0):.4f}")
+                st.write(f"Recall: {recall_score(y_test, y_pred, zero_division=0):.4f}")
+                st.write(f"F1 Score: {f1_score(y_test, y_pred, zero_division=0):.4f}")
+                st.write("Confusion Matrix:")
+                st.write(confusion_matrix(y_test, y_pred))
+
+                joblib.dump(model, "logistic_model.pkl")
+                joblib.dump(feature_cols, "features.pkl")
+                with open("logistic_model.pkl", "rb") as f:
+                    st.download_button("Download Trained Model", f, file_name="logistic_model.pkl")
+                with open("features.pkl", "rb") as f:
+                    st.download_button("Download Features File", f, file_name="features.pkl")
+
 
 # ---------------------- PREDICTION PAGE ----------------------
 if menu == "Prediction":
