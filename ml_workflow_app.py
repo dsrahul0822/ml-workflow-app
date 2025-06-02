@@ -153,6 +153,35 @@ if menu == "Preprocessing":
             st.subheader("⬇️ Export Cleaned Data")
             csv = st.session_state["preprocessed_data"].to_csv(index=False).encode("utf-8")
             st.download_button("Download CSV", csv, file_name="cleaned_data.csv", mime="text/csv")
+            
+# ---------------------- VISUALIZATION ----------------------
+if menu == "Visualization":
+    if not st.session_state["logged_in"]:
+        st.warning("🔒 Please login first.")
+    else:
+        st.title("📊 Data Visualization")
+        if "preprocessed_data" not in st.session_state:
+            st.warning("⚠️ Please preprocess the data first.")
+        else:
+            df = st.session_state["preprocessed_data"].copy()
+            chart_type = st.selectbox("Select Chart Type", ["Scatter Plot", "Bar Plot", "Count Plot"])
+            numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+            cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+
+            if chart_type == "Scatter Plot":
+                st.subheader("📍 Scatter Plot")
+                if len(numeric_cols) < 2:
+                    st.info("At least 2 numeric columns required.")
+                else:
+                    x_col = st.selectbox("X-axis", numeric_cols, key="scatter_x")
+                    y_col = st.selectbox("Y-axis", numeric_cols, key="scatter_y")
+                    color_col = st.selectbox("Color (Optional)", ["None"] + df.columns.tolist(), key="scatter_color")
+                    fig, ax = plt.subplots()
+                    if color_col != "None":
+                        sns.scatterplot(data=df, x=x_col, y=y_col, hue=color_col, ax=ax)
+                    else:
+                        sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax)
+                    st.pyplot(fig)
 
 # ---------------------- LINEAR REGRESSION ----------------------
 if menu == "Linear Regression":
